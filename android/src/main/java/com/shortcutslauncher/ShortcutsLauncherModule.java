@@ -12,11 +12,16 @@ import android.content.pm.PackageManager;
 import androidx.core.content.pm.ShortcutManagerCompat;
 import androidx.core.content.pm.ShortcutInfoCompat;
 import android.graphics.drawable.Icon;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.app.Activity;
 import android.os.Build;
 import android.net.Uri;
+import android.util.Base64;
 import android.util.Log;
 import android.widget.Toast;
+import android.os.Handler;
+import android.content.res.TypedArray;
 
 import androidx.annotation.Nullable;
 import androidx.core.graphics.drawable.IconCompat;
@@ -30,6 +35,7 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.Locale.Category;
 import java.util.HashMap;
+import java.util.Collections;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.security.InvalidParameterException;
@@ -51,7 +57,8 @@ import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.WritableNativeArray;
 import com.facebook.react.bridge.WritableNativeMap;
-
+import com.facebook.react.bridge.Arguments;
+import com.facebook.react.modules.core.DeviceEventManagerModule;
 
 public class ShortcutsLauncherModule extends ReactContextBaseJavaModule {
 
@@ -146,8 +153,10 @@ public class ShortcutsLauncherModule extends ReactContextBaseJavaModule {
       throws PackageManager.NameNotFoundException {
 
     Log.i(TAG, "ADD SHORTCUT TO SCREEN");
+
     if (Build.VERSION.SDK_INT < 25)
       return;
+
     if (isShortcutExist(shortcutDetails.getString(ID_KEY))) {
       Log.i(TAG, "O ATALHO JA EXISTE");
       return;
@@ -181,28 +190,53 @@ public class ShortcutsLauncherModule extends ReactContextBaseJavaModule {
       String url = "tel:" + shortcutDetails.getString(ICON_PHONE_KEY);
       Log.v(TAG, "SUPORTED PIN SHORTCUT " + url);
 
+      // OPEN CALL FROM PHONE NUMBER
       Intent intentCall = new Intent(Intent.ACTION_CALL, Uri.parse(url));
       intentCall.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+      // OPEN PAGE URL
       // Intent intentCall = new Intent(Intent.ACTION_VIEW,
       // Uri.parse("https://google.com"));
 
-      // intentCall.addCategory(Intent.CALL);
-
-      ShortcutInfoCompat builder = new ShortcutInfoCompat.Builder(this.reactContext, ID_KEY)
+      ShortcutInfoCompat builder = new ShortcutInfoCompat.Builder(this.reactContext, shortcutDetails.getString(ID_KEY))
           .setActivity(intentCall.getComponent())
           .setShortLabel(shortcutDetails.getString(SHORT_LABEL_KEY))
           .setLongLabel(shortcutDetails.getString(LONG_LABEL_KEY))
           .setIcon(IconCompat.createWithResource(currentActivity.getApplicationContext(),
               iconId))
           .setIntent(intentCall)
-          // .setIntent(new Intent(Intent.ACTION_CALL, Uri.parse("https://google.com")))
           .build();
+
+      Log.v(TAG, "ADDED PIN SHORTCUT ");
 
       Log.v(TAG, "ADDED PIN SHORTCUT ");
 
       try {
         ShortcutManagerCompat.requestPinShortcut(this.reactContext, builder, null);
-        promise.resolve("BAGUA");
+
+        new Handler().postDelayed(new Runnable() {
+          @Override
+          public void run() {
+            // ShortcutInfoCompat dynamicShortcut = new
+            // ShortcutInfoCompat.Builder(reactContext,
+            // shortcutDetails.getString(ID_KEY))
+            // .setShortLabel("Dynamic Shortcut")
+            // .setLongLabel("Extra Information")
+            // .setIcon(IconCompat.createWithResource(currentActivity.getApplicationContext(),
+            // iconId))
+            // .setIntent(new Intent(Intent.ACTION_VIEW,
+            // Uri.parse("http://localhost:3000")))
+            // .build();
+
+            // ShortcutManagerCompat.addDynamicShortcuts(reactContext,
+            // Collections.singletonList(dynamicShortcut));
+            // Retorna um objeto JSON contendo o ID do atalho
+            WritableMap result = Arguments.createMap();
+            result.putString("shortcutId", shortcutDetails.getString(ID_KEY));
+            result.putString("message", "SHORTCUT CREATED SUCCESS");
+            promise.resolve(result);
+          }
+        }, 1000); // Aguarde 1 segundo (ajuste conforme necessário)
       } catch (Exception e) {
         promise.reject(SHORTCUT_NOT_EXIST, "NOT FOUND SHORTCUT");
       }
@@ -225,12 +259,14 @@ public class ShortcutsLauncherModule extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void addDetailToShortcut(ReadableMap shortcutDetails) {
-    Log.v(TAG, "ADD DETAIL TO SHORTCUT ");
+    Log.v(TAG, "ADD DETAIL TO SHORTCUT => " + shortcutDetails.getString(ID_KEY));
     if (Build.VERSION.SDK_INT < 25)
       return;
-    if (isShortcutExist(shortcutDetails.getString(ID_KEY)))
+
+    if (!isShortcutExist(shortcutDetails.getString(ID_KEY)))
       return;
 
+    Log.v(TAG, "OK => ");
     ShortcutInfo shortcut = initShortcut(shortcutDetails);
 
     ShortcutManager shortcutManager = getShortCutManager();
@@ -289,19 +325,22 @@ public class ShortcutsLauncherModule extends ReactContextBaseJavaModule {
   }
 
   private boolean isShortcutExist(String id) {
-    Log.v(TAG, "IS SHORTCUT EXIST " + id);
-    if (Build.VERSION.SDK_INT < 25)
+    if (Build.VERSION.SDK_INT < 25) {
       return false;
+    }
 
+    Log.v(TAG, "CHECK SHORTCUTS " + id);
     ShortcutManager shortcutManager = (ShortcutManager) getShortCutManager();
     List<ShortcutInfo> shortcutInfoList = shortcutManager.getDynamicShortcuts();
+
     for (ShortcutInfo shortcutInfo : shortcutInfoList) {
       if (shortcutInfo.getId().equals(id)) {
-        Log.v(TAG, "IS SHORTCUT EXIST " + shortcutInfo.getId());
+        Log.v(TAG, "SHORTCUT EXIST " + shortcutInfo.getId());
         return true;
       }
     }
-    Log.v(TAG, "IS SHORTCUT NOT EXIST ");
+
+    Log.v(TAG, "SHORTCUT NOT EXIST " + id);
     return false;
   }
 
@@ -417,6 +456,7 @@ public class ShortcutsLauncherModule extends ReactContextBaseJavaModule {
     String shortLabel = jsonShortcut.getString("shortLabel");
     String longLabel = jsonShortcut.getString("longLabel");
     if (shortLabel.length() == 0 && longLabel.length() == 0) {
+      Log.v(TAG, "----INVALID PARAMETER EXCEPTION-----" + "A value for either 'shortLabel' or 'longLabel' is required");
       throw new InvalidParameterException(
           "A value for either 'shortLabel' or 'longLabel' is required");
     }
@@ -431,17 +471,18 @@ public class ShortcutsLauncherModule extends ReactContextBaseJavaModule {
 
     IconCompat icon;
     String iconBitmap = jsonShortcut.getString(ICON_NAME_KEY);
-    String iconFolder = jsonShortcut.getString(ICON_FOLDER_KEY);
-    int iconId = context.getResources().getIdentifier(iconBitmap, iconFolder, context.getPackageName());
+    // String iconFolder = jsonShortcut.getString(ICON_FOLDER_KEY);
+    // int iconId = context.getResources().getIdentifier(iconBitmap, iconFolder,
+    // context.getPackageName());
 
     // Icon icon;
     // String iconBitmap = jsonShortcut.optString("iconBitmap");
     // String iconFromResource = jsonShortcut.optString("iconFromResource");
 
     // String activityPackage = this.cordova.getActivity().getPackageName();
-
+    Log.v(TAG, "----ADD PINNED SHORTCUT-----" + iconBitmap.length());
     // if (iconBitmap.length() > 0) {
-    // icon = Icon.createWithBitmap(decodeBase64Bitmap(iconBitmap));
+    icon = IconCompat.createWithBitmap(decodeBase64Bitmap(iconBitmap));
     // }
 
     // if (iconFromResource.length() > 0) {
@@ -470,8 +511,9 @@ public class ShortcutsLauncherModule extends ReactContextBaseJavaModule {
         .setActivity(intent.getComponent())
         .setShortLabel(shortLabel)
         .setLongLabel(longLabel)
+        .setIcon(icon)
         // .setIcon(IconCompat.createWithResource(context, android.R.drawable.padrao))
-        .setIcon(IconCompat.createWithResource(context, iconId))
+        // .setIcon(IconCompat.createWithResource(context, icon))
         .setIntent(intent)
         .build();
   }
@@ -498,41 +540,38 @@ public class ShortcutsLauncherModule extends ReactContextBaseJavaModule {
     }
   }
 
-  // @ReactMethod
-  // public void getDrawableImageNames(Promise promise) {
-  // Activity currentActivity = getCurrentActivity();
-  // Context context = currentActivity.getApplicationContext();
-  // Field[] drawableFields = R.drawable.class.getDeclaredFields();
-  // List<String> drawableImageNames = new ArrayList<>();
-  // for (Field field : drawableFields) {
-  // try {
-  // // if (field.getName().startsWith("ic_")) {
-  // int resId = field.getInt(R.drawable.class);
-  // String resName = context.getResources().getResourceEntryName(resId);
-  // drawableImageNames.add(resName);
-  // // }
-  // } catch (IllegalAccessException e) {
-  // e.printStackTrace();
-  // }
-  // }
-  // Log.v(TAG, "Drawable images: " + drawableImageNames.toString());
-  // promise.resolve(drawableImageNames);
-  // }
-
   @ReactMethod
   public void getDrawableImageNames(Promise promise) throws IOException {
     Activity currentActivity = this.reactContext.getCurrentActivity();
     Resources resources = currentActivity.getResources();
-    AssetManager assetManager = resources.getAssets();
 
     String[] imageNames = resources.getAssets().list("drawable");
-    List<String> imagePaths = new ArrayList<>();
+    WritableArray imagePaths = new WritableNativeArray();
 
     for (String imageName : imageNames) {
       int resId = resources.getIdentifier(imageName, "drawable", currentActivity.getPackageName());
       if (resId != 0) {
-        imagePaths.add("drawable://" + resId);
+
+        String imagePath = "res://" + currentActivity.getPackageName() + "/" + resId;
+
+        WritableMap imageMap = new WritableNativeMap();
+        imageMap.putString("name", imageName);
+        imageMap.putString("path", imagePath);
+
+        imagePaths.pushMap(imageMap);
       }
+    }
+
+    AssetManager assetManager = this.reactContext.getAssets();
+    try {
+      String[] filelist = assetManager.list("");
+      // System.out.println(fileList().length);
+      System.out.println("The list of files.");
+      for (String name : filelist) {
+        System.out.println(name);
+      }
+    } catch (Exception e) {
+      System.out.println("IO Excpetion");
     }
 
     promise.resolve(imagePaths);
@@ -557,6 +596,11 @@ public class ShortcutsLauncherModule extends ReactContextBaseJavaModule {
     HashMap<String, Object> map = readableMap.toHashMap();
     JSONObject jsonObject = new JSONObject(map);
     return jsonObject;
+  }
+
+  private static Bitmap decodeBase64Bitmap(String input) {
+    byte[] decodedByte = Base64.decode(input, 0);
+    return BitmapFactory.decodeByteArray(decodedByte, 0, decodedByte.length);
   }
 
 }

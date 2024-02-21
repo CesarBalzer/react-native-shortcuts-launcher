@@ -11,6 +11,7 @@
   "dependencies": {
     "react": "18.2.0",
     "react-native": "0.71.3",
+    "react-native-fs": "^2.20.0",
     "react-native-quick-actions": "^0.3.13"
   },
   "devDependencies": {

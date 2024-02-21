@@ -9,7 +9,7 @@ export function addDetailToShortcut(a: any) {
   return ShortcutsLauncher.addDetailToShortcut(a);
 }
 
-export function updateShortcut(a: any){
+export function updateShortcut(a: any) {
   return ShortcutsLauncher.updateShortcut(a);
 }
 
@@ -23,6 +23,10 @@ export function addPinnedShortcut(a: any): Promise<any> {
 
 export function exists(a: any): Promise<string> {
   return ShortcutsLauncher.exists(a);
+}
+
+export function removeAllShortcuts() {
+  return ShortcutsLauncher.removeAllShortcuts();
 }
 
 export function getDrawableImageNames(): Promise<string[]> {
