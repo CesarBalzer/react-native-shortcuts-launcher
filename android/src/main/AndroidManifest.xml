@@ -1,4 +1,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="com.shortcutslauncher">
+  package="com.shortcutslauncher">
+
+  <uses-permission android:name="android.permission.CALL_PHONE" />
+  <uses-permission android:name="android.permission.READ_CONTACTS" />
+  <uses-permission android:name="android.permission.INSTALL_SHORTCUT" />
+
+  <queries>
+    <intent>
+      <category android:name="android.intent.category.ACTION_CREATE_SHORTCUT" />
+      <data android:scheme="https" />
+    </intent>
+  </queries>
 
 </manifest>
