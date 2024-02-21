@@ -197,14 +197,14 @@ const App = () => {
           style={styles.buttons}
           title="Create shortcut"
           onPress={createShortCut}
-        ></Button>
+        />
       </View>
       <View style={styles.actions}>
         <Button
           style={styles.buttons}
           title="Add details"
           onPress={addDetail}
-        ></Button>
+        />
       </View>
       {/* <View style={styles.actions}>
         <Button
@@ -214,7 +214,7 @@ const App = () => {
         ></Button>
       </View> */}
       {/* <ImageList images={images} /> */}
-      <View style={{ height: 300 }}>
+      <View style={styles.list}>
         <FlatList
           data={imagePaths}
           renderItem={renderItem}
@@ -229,7 +229,7 @@ const App = () => {
           style={styles.buttons}
           title="Check shortcut!"
           onPress={checkExistsShortCut}
-        ></Button>
+        />
       </View>
       {/* <View style={styles.actions}>
         <Button
@@ -246,7 +246,7 @@ const App = () => {
           style={styles.buttons}
           title="Remove all shortcut"
           onPress={removeAllShortCuts}
-        ></Button>
+        />
       </View>
       <StatusBar style="auto" />
     </View>
@@ -279,6 +279,7 @@ const styles = StyleSheet.create({
     height: 50,
     marginRight: 10,
   },
+  list: { height: 300 },
 });
 
 export default App;
